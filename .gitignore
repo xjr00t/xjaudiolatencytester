@@ -1,0 +1,26 @@
+# Build output
+bin/
+obj/
+publish/
+publish*/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NuGet (old-style packages folder)
+packages/
+packages.config
+
+# Claude Code memory (local only)
+.claude/
+
+# App settings saved at runtime
+AppSettings.xml
+
+# OS
+.DS_Store
+Thumbs.db
