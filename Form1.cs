@@ -47,8 +47,11 @@ namespace XJAudioLatencyTester
             settingsAtStartup = AppSettings.Load(); // �������� ��� �������� ���������
 
             InitializeComponent();
-            this.AutoScroll = true; // �������� ��� ������
-            this.MinimumSize = new Size(700, 600); // ����������� ������ ����
+            this.AutoScroll = true;
+            this.MinimumSize = new Size(700, 600);
+
+            using (var stream = typeof(Form1).Assembly.GetManifestResourceStream("XJAudioLatencyTester.Properties.app.ico"))
+                if (stream != null) this.Icon = new System.Drawing.Icon(stream);
 
             // ���������� �������� ����
             this.FormClosing += Form1_FormClosing;

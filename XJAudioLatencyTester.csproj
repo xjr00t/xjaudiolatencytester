@@ -9,6 +9,7 @@
     <Deterministic>true</Deterministic>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Properties\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <!-- After publish: Costura has embedded all DLLs into the EXE; remove the redundant copies -->
@@ -37,6 +38,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Properties\app.ico" />
     <EmbeddedResource Update="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
