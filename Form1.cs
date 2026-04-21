@@ -33,18 +33,17 @@ namespace XJAudioLatencyTester
         private WaveInEvent waveIn;
         private bool isMonitoring = false;
         private float currentVolume = 0;
-        private float threshold = 0.1f;  // ���������, �� ��������� ~-20 ��
+        private float threshold = 0.1f;  // amplitude in [0..1], default ≈ -20 dB
         private byte[] lastRecordedData;
         private string testStartTime;
         private Dictionary<string, byte[]> deviceRecordedData = new Dictionary<string, byte[]>();
         private AppSettings appSettings;
-        private AppSettings settingsAtStartup;
+        private AppSettings settingsAtStartup;  // snapshot used to detect changes on exit
 
         public Form1()
         {
-            // ��������� ��������� �� ������������� �����������
             appSettings = AppSettings.Load();
-            settingsAtStartup = AppSettings.Load(); // �������� ��� �������� ���������
+            settingsAtStartup = AppSettings.Load();
 
             InitializeComponent();
             this.AutoScroll = true;
@@ -53,10 +52,9 @@ namespace XJAudioLatencyTester
             using (var stream = typeof(Form1).Assembly.GetManifestResourceStream("XJAudioLatencyTester.Properties.app.ico"))
                 if (stream != null) this.Icon = new System.Drawing.Icon(stream);
 
-            // ���������� �������� ����
             this.FormClosing += Form1_FormClosing;
 
-            UpdateThresholdDisplay(); 
+            UpdateThresholdDisplay();
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -79,13 +77,9 @@ namespace XJAudioLatencyTester
                     MessageBoxIcon.Question);
 
                 if (result == DialogResult.Yes)
-                {
                     SaveSettings();
-                }
                 else if (result == DialogResult.Cancel)
-                {
                     e.Cancel = true;
-                }
             }
         }
 
@@ -95,7 +89,6 @@ namespace XJAudioLatencyTester
             this.Size = new Size(700, 1070);
             this.StartPosition = FormStartPosition.CenterScreen;
 
-            // Title (�������� ��� ���������)
             var titleLabel = new Label
             {
                 Text = "XJ Audio Latency Tester",
@@ -105,7 +98,6 @@ namespace XJAudioLatencyTester
                 ForeColor = Color.DarkBlue
             };
 
-            // Output devices section (�������� ��� ���������)
             var outputSectionLabel = new Label
             {
                 Text = "Output Devices:",
@@ -114,7 +106,6 @@ namespace XJAudioLatencyTester
                 Size = new Size(200, 20)
             };
 
-            // Panel for output devices (�������� ��� ���������)
             outputDevicesPanel = new Panel
             {
                 Location = new Point(20, 85),
@@ -123,7 +114,6 @@ namespace XJAudioLatencyTester
                 BorderStyle = BorderStyle.FixedSingle
             };
 
-            // Input devices section (�������� ��� ���������)
             var inputSectionLabel = new Label
             {
                 Text = "Input Device (Microphone):",
@@ -132,7 +122,6 @@ namespace XJAudioLatencyTester
                 Size = new Size(200, 20)
             };
 
-            // Input devices combo (�������� ��� ���������)
             inputDevicesCombo = new ComboBox
             {
                 Location = new Point(20, 275),
@@ -141,7 +130,6 @@ namespace XJAudioLatencyTester
             };
             inputDevicesCombo.SelectedIndexChanged += InputDevicesCombo_SelectedIndexChanged;
 
-            // VU Meter section (�������� ��� ���������)
             var vuMeterLabel = new Label
             {
                 Text = "Input Level:",
@@ -151,8 +139,8 @@ namespace XJAudioLatencyTester
 
             vuMeter = new ProgressBar
             {
-                Location = new Point(28, 345), // �������� ������ �� 8px
-                Size = new Size(384, 25),      // ������ �� 16px (���� 400)
+                Location = new Point(28, 345),
+                Size = new Size(384, 25),
                 Minimum = 0,
                 Maximum = 100,
                 Value = 0,
@@ -161,13 +149,12 @@ namespace XJAudioLatencyTester
 
             vuLabel = new Label
             {
-                Text = "-? dB",
-                Location = new Point(418, 345), // �������� ������ �� 8px (���� 430)
+                Text = "-∞ dB",
+                Location = new Point(418, 345),
                 Size = new Size(80, 20),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
-            // Threshold section (�������� ��� ���������)
             var thresholdSectionLabel = new Label
             {
                 Text = "Detection Threshold (dB):",
@@ -175,13 +162,14 @@ namespace XJAudioLatencyTester
                 Size = new Size(180, 20)
             };
 
+            // Slider maps 0..100 to -60..+40 dB via: dB = value - 60
             thresholdTrackBar = new TrackBar
             {
                 Location = new Point(20, 410),
                 Size = new Size(400, 45),
-                Minimum = 0, 
+                Minimum = 0,
                 Maximum = 100,
-                Value = 50,    // �� ��������� -10 �� (�������� 50 �� 100)
+                Value = 50,
                 TickFrequency = 10,
                 SmallChange = 1,
                 LargeChange = 10
@@ -204,6 +192,7 @@ namespace XJAudioLatencyTester
                 ForeColor = Color.Gray,
                 Font = new Font("Arial", 8)
             };
+
             calibrateButton = new Button
             {
                 Text = "Calibrate Threshold",
@@ -213,7 +202,6 @@ namespace XJAudioLatencyTester
             };
             calibrateButton.Click += CalibrateButton_Click;
 
-            // Reset Settings button
             resetSettingsButton = new Button
             {
                 Text = "Reset Settings",
@@ -223,7 +211,6 @@ namespace XJAudioLatencyTester
             };
             resetSettingsButton.Click += ResetSettingsButton_Click;
 
-            // Bluetooth warm-up checkbox
             bluetoothWarmupCheckBox = new CheckBox
             {
                 Text = "Bluetooth Warm-up (1s init)",
@@ -232,7 +219,6 @@ namespace XJAudioLatencyTester
                 Checked = true
             };
 
-            // Test button (�������� ��� ���������)
             testButton = new Button
             {
                 Text = "Run Latency Analysis",
@@ -243,7 +229,6 @@ namespace XJAudioLatencyTester
             };
             testButton.Click += TestButton_Click;
 
-            // Status label (�������� ��� ���������)
             statusLabel = new Label
             {
                 Text = "Select devices and click Run",
@@ -252,7 +237,6 @@ namespace XJAudioLatencyTester
                 ForeColor = Color.Gray
             };
 
-            // Results section
             var resultsLabel = new Label
             {
                 Text = "Test Results:",
@@ -271,7 +255,6 @@ namespace XJAudioLatencyTester
                 Font = new Font("Consolas", 9)
             };
 
-            // Relative results section - �������� ����
             var relativeResultsLabel = new Label
             {
                 Text = "Relative Latency:",
@@ -290,7 +273,6 @@ namespace XJAudioLatencyTester
                 Font = new Font("Consolas", 9)
             };
 
-            // Log section - �������� ��� ����
             var logLabel = new Label
             {
                 Text = "Diagnostic Log:",
@@ -329,43 +311,40 @@ namespace XJAudioLatencyTester
                 WordWrap = false
             };
 
-            // Add controls to form
             this.Controls.AddRange(new Control[]
             {
-        titleLabel,
-        outputSectionLabel,
-        outputDevicesPanel,
-        inputSectionLabel,
-        inputDevicesCombo,
-        vuMeterLabel,
-        vuMeter,
-        vuLabel,
-        thresholdSectionLabel,
-        thresholdTrackBar,
-        thresholdValueLabel,
-        thresholdLabel,
-        testButton,
-        bluetoothWarmupCheckBox,
-        calibrateButton,
-        resetSettingsButton,
-        statusLabel,
-        resultsLabel,
-        resultsTextBox,
-        relativeResultsLabel,
-        relativeResultsTextBox,
-        logLabel,
-        clearLogButton,
-        saveDataButton,
-        logTextBox
+                titleLabel,
+                outputSectionLabel,
+                outputDevicesPanel,
+                inputSectionLabel,
+                inputDevicesCombo,
+                vuMeterLabel,
+                vuMeter,
+                vuLabel,
+                thresholdSectionLabel,
+                thresholdTrackBar,
+                thresholdValueLabel,
+                thresholdLabel,
+                testButton,
+                bluetoothWarmupCheckBox,
+                calibrateButton,
+                resetSettingsButton,
+                statusLabel,
+                resultsLabel,
+                resultsTextBox,
+                relativeResultsLabel,
+                relativeResultsTextBox,
+                logLabel,
+                clearLogButton,
+                saveDataButton,
+                logTextBox
             });
 
-            // Add first device panel
             AddDevicePanel();
             LoadAudioDevices();
-            ApplySettings(); // ��������� ����������� ���������
+            ApplySettings();
             UpdateThresholdDisplay();
 
-            // Add initial log entry
             AddLog("Application started");
         }
 
@@ -379,8 +358,6 @@ namespace XJAudioLatencyTester
 
             string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
             logTextBox.AppendText($"[{timestamp}] {message}\r\n");
-
-            // Auto-scroll to bottom
             logTextBox.SelectionStart = logTextBox.Text.Length;
             logTextBox.ScrollToCaret();
         }
@@ -399,16 +376,12 @@ namespace XJAudioLatencyTester
                 var calibrator = new ThresholdCalibrator();
                 float calibratedThreshold = calibrator.Calibrate(inputDevicesCombo.SelectedIndex);
 
-                // ������������ ��������� � dB � ��������� �������
+                // Convert amplitude to slider position: dB = 20·log10(amp), slider = dB + 60
                 float calibratedDB = (float)(20 * Math.Log10(calibratedThreshold));
-
-                // ������������ dB ������� � ������� �������� (0-100)
-                // �������: �������� X ���� dB = X - 60
-                // ������: dB = X - 60 => X = dB + 60
                 int sliderValue = Math.Max(0, Math.Min(100, (int)(calibratedDB + 60)));
                 thresholdTrackBar.Value = sliderValue;
 
-                AddLog($"Calibrated: amplitude={calibratedThreshold:F6}, dB={calibratedDB:F1}, slider position={sliderValue}");
+                AddLog($"Calibrated: amplitude={calibratedThreshold:F6}, dB={calibratedDB:F1}, slider={sliderValue}");
             }
             catch (Exception ex)
             {
@@ -434,10 +407,9 @@ namespace XJAudioLatencyTester
                 AppSettings.ResetToDefaults();
                 appSettings = new AppSettings();
                 threshold = appSettings.DetectionThreshold;
-                thresholdTrackBar.Value = 50; // -10 dB
+                thresholdTrackBar.Value = 50;
                 bluetoothWarmupCheckBox.Checked = true;
 
-                // ������� ��������� ����������
                 if (inputDevicesCombo.Items.Count > 0)
                     inputDevicesCombo.SelectedIndex = 0;
 
@@ -458,7 +430,6 @@ namespace XJAudioLatencyTester
 
         private void ApplySettings()
         {
-            // Restore output device panels
             var savedOutputIds = appSettings.SelectedOutputDeviceIds ?? new int[0];
             if (savedOutputIds.Length > 0)
             {
@@ -491,22 +462,20 @@ namespace XJAudioLatencyTester
         {
             if (data == null || data.Length == 0) return;
 
-            // ������� ��� ���������� �� ������������ ��������
             string safeDeviceName = CleanFileName(deviceName);
             string fileName = $"{testStartTime}_{deviceIndex:00}_{safeDeviceName}.wav";
-
             deviceRecordedData[fileName] = data;
         }
+
         private string CleanFileName(string fileName)
         {
             foreach (char c in System.IO.Path.GetInvalidFileNameChars())
-            {
                 fileName = fileName.Replace(c, '_');
-            }
-            // ����� �������� ��������� ������� ���� � ��������� ���������
+            // Colons are valid on some FS but appear in WASAPI device names
             fileName = fileName.Replace(':', '_');
             return fileName;
         }
+
         private void UpdateSaveButtonSafe(bool enable)
         {
             if (saveDataButton.InvokeRequired)
@@ -516,6 +485,7 @@ namespace XJAudioLatencyTester
             }
             saveDataButton.Enabled = enable;
         }
+
         private void SaveDataButton_Click(object sender, EventArgs e)
         {
             if (deviceRecordedData.Count == 0)
@@ -528,7 +498,6 @@ namespace XJAudioLatencyTester
             {
                 if (deviceRecordedData.Count == 1)
                 {
-                    // ���� ���������� - ��������� ��� ������
                     var item = deviceRecordedData.First();
                     using (var saveDialog = new SaveFileDialog())
                     {
@@ -545,7 +514,6 @@ namespace XJAudioLatencyTester
                 }
                 else
                 {
-                    // ��������� ��������� - �������� �����
                     using (var folderDialog = new FolderBrowserDialog())
                     {
                         folderDialog.Description = "Select folder to save recorded data for all devices";
@@ -574,10 +542,9 @@ namespace XJAudioLatencyTester
         private void SaveAsWav(string filename, byte[] data)
         {
             using (var writer = new WaveFileWriter(filename, new WaveFormat(44100, 16, 1)))
-            {
                 writer.Write(data, 0, data.Length);
-            }
         }
+
         private void AddDevicePanel()
         {
             var devicePanel = new DevicePanel(devicePanels.Count, devicePanels.Count == 0);
@@ -587,11 +554,8 @@ namespace XJAudioLatencyTester
 
             outputDevicesPanel.Controls.Add(devicePanel);
             devicePanels.Add(devicePanel);
-
-            // Load devices for the new panel
             devicePanel.LoadOutputDevices();
 
-            // Adjust panel height
             outputDevicesPanel.Height = Math.Min(150, devicePanels.Count * 35 + 10);
         }
 
@@ -603,7 +567,6 @@ namespace XJAudioLatencyTester
             outputDevicesPanel.Controls.Remove(panelToRemove);
             devicePanels.RemoveAt(index);
 
-            // Reindex remaining panels
             for (int i = 0; i < devicePanels.Count; i++)
             {
                 devicePanels[i].Index = i;
@@ -611,7 +574,6 @@ namespace XJAudioLatencyTester
                 devicePanels[i].IsFirstPanel = (i == 0);
             }
 
-            // Adjust panel height
             outputDevicesPanel.Height = Math.Min(150, devicePanels.Count * 35 + 10);
         }
 
@@ -622,13 +584,9 @@ namespace XJAudioLatencyTester
                 statusLabel.Text = "Loading audio devices...";
                 AddLog("Loading audio devices...");
 
-                // Load output devices for all panels
                 foreach (var panel in devicePanels)
-                {
                     panel.LoadOutputDevices();
-                }
 
-                // Load input devices
                 inputDevicesCombo.Items.Clear();
                 for (int i = 0; i < WaveIn.DeviceCount; i++)
                 {
@@ -636,7 +594,6 @@ namespace XJAudioLatencyTester
                     inputDevicesCombo.Items.Add($"{i}: {capabilities.ProductName}");
                 }
 
-                // Select first available devices
                 if (inputDevicesCombo.Items.Count > 0)
                     inputDevicesCombo.SelectedIndex = 0;
 
@@ -658,19 +615,17 @@ namespace XJAudioLatencyTester
 
         private void ThresholdTrackBar_ValueChanged(object sender, EventArgs e)
         {
-            // ����������� �������� �������� (0-100) � dB (-60 �� 0)
-            // ��� ������������� ��������� �� ~0.001 �� 1.0
-            float dB = (thresholdTrackBar.Value - 60);  // -60 �� 40
-            threshold = (float)Math.Pow(10, dB / 20.0);  // ������������ dB � ��������� (0.001 �� ~100)
+            // Slider 0..100 → dB = value - 60 → amplitude = 10^(dB/20)
+            float dB = thresholdTrackBar.Value - 60;
+            threshold = (float)Math.Pow(10, dB / 20.0);
 
             UpdateThresholdDisplay();
-
             AddLog($"Threshold changed to {thresholdTrackBar.Value} ({dB:F1} dB, amplitude: {threshold:F4})");
         }
 
         private void UpdateThresholdDisplay()
         {
-            float dB = (thresholdTrackBar.Value - 60);
+            float dB = thresholdTrackBar.Value - 60;
             thresholdValueLabel.Text = $"{dB:F0} dB";
         }
 
@@ -713,58 +668,38 @@ namespace XJAudioLatencyTester
             }
 
             if (inputDevicesCombo.SelectedIndex != -1)
-            {
                 StartVUMonitoring();
-            }
         }
 
         private void OnDataAvailable(object sender, WaveInEventArgs e)
         {
             float max = 0;
-            // Buffer contains 16-bit samples
             for (int index = 0; index < e.BytesRecorded; index += 2)
             {
                 short sample = (short)((e.Buffer[index + 1] << 8) | e.Buffer[index]);
-                float sample32 = sample / 32768f;
-                if (sample32 < 0) sample32 = -sample32;
+                float sample32 = Math.Abs(sample / 32768f);
                 if (sample32 > max) max = sample32;
             }
 
             currentVolume = max;
 
-            // Update UI in main thread
             if (vuMeter.InvokeRequired)
-            {
-                vuMeter.Invoke(new Action(() =>
-                {
-                    UpdateVUMeter(currentVolume);
-                }));
-            }
+                vuMeter.Invoke(new Action(() => UpdateVUMeter(currentVolume)));
             else
-            {
                 UpdateVUMeter(currentVolume);
-            }
         }
 
         private void UpdateVUMeter(float volume)
         {
-            // Convert to dB
             double dB = volume > 0 ? 20 * Math.Log10(volume) : -100;
-
-            // Update progress bar (0-100 scale)
             int meterValue = (int)Math.Max(0, Math.Min(100, (dB + 60) * 100 / 60));
             vuMeter.Value = meterValue;
 
-            // Update color based on level
-            if (dB > -3)
-                vuMeter.ForeColor = Color.Red;
-            else if (dB > -10)
-                vuMeter.ForeColor = Color.Orange;
-            else
-                vuMeter.ForeColor = Color.LimeGreen;
+            if (dB > -3) vuMeter.ForeColor = Color.Red;
+            else if (dB > -10) vuMeter.ForeColor = Color.Orange;
+            else vuMeter.ForeColor = Color.LimeGreen;
 
-            // Update dB label
-            vuLabel.Text = dB > -60 ? $"{dB:F1} dB" : "-? dB";
+            vuLabel.Text = dB > -60 ? $"{dB:F1} dB" : "-∞ dB";
         }
 
         private void OnRecordingStopped(object sender, StoppedEventArgs e)
@@ -780,10 +715,8 @@ namespace XJAudioLatencyTester
                 return;
             }
 
-            // �������� ����� ������ ������������
             StartNewTestSession();
 
-            // Get selected devices in main thread before starting task
             var devicesToTest = new List<DeviceTestInfo>();
             foreach (var panel in devicePanels)
             {
@@ -821,9 +754,7 @@ namespace XJAudioLatencyTester
                 DisplayResults(results);
 
                 if (results.Count > 1)
-                {
                     DisplayRelativeResults(results);
-                }
 
                 statusLabel.Text = "Test completed";
                 AddLog("=== Test completed ===");
@@ -839,7 +770,8 @@ namespace XJAudioLatencyTester
             }
         }
 
-        private System.Threading.Tasks.Task<List<DeviceTestResult>> TestDevicesLatency(List<DeviceTestInfo> devices, int inputDeviceId)
+        private System.Threading.Tasks.Task<List<DeviceTestResult>> TestDevicesLatency(
+            List<DeviceTestInfo> devices, int inputDeviceId)
         {
             return System.Threading.Tasks.Task.Run(() =>
             {
@@ -855,7 +787,9 @@ namespace XJAudioLatencyTester
 
                     try
                     {
-                        var (latency, recordedData) = latencyMeasurer.MeasureLatency(device.WasapiDeviceId, device.DeviceId, inputDeviceId);
+                        var (latency, recordedData) = latencyMeasurer.MeasureLatency(
+                            device.WasapiDeviceId, device.DeviceId, inputDeviceId);
+
                         var result = new DeviceTestResult
                         {
                             DeviceName = device.DeviceName,
@@ -863,15 +797,10 @@ namespace XJAudioLatencyTester
                             Success = true
                         };
                         results.Add(result);
-
-                        // ���������� ��������� ����������
                         UpdateResultsSafe(results);
                         AddLog($"Device {device.DeviceName} - Latency: {latency:F1} ms");
 
-                        // ��������� ������ ��� ����� ����������
                         SaveDeviceData(recordedData, device.DeviceName, i + 1, devices.Count > 1);
-
-                        // �������� ������ ����������
                         UpdateSaveButtonSafe(true);
                     }
                     catch (Exception ex)
@@ -883,8 +812,6 @@ namespace XJAudioLatencyTester
                             Success = false
                         };
                         results.Add(result);
-
-                        // ���������� ��������� ����������
                         UpdateResultsSafe(results);
                         AddLog($"Device {device.DeviceName} - ERROR: {ex.Message}");
                     }
@@ -905,14 +832,9 @@ namespace XJAudioLatencyTester
             var sb = new System.Text.StringBuilder();
             foreach (var result in results)
             {
-                if (result.Success)
-                {
-                    sb.AppendLine($"{result.DeviceName} - {result.LatencyMs:F1} ms");
-                }
-                else
-                {
-                    sb.AppendLine($"{result.DeviceName} - Error: {result.ErrorMessage}");
-                }
+                sb.AppendLine(result.Success
+                    ? $"{result.DeviceName} - {result.LatencyMs:F1} ms"
+                    : $"{result.DeviceName} - Error: {result.ErrorMessage}");
             }
             resultsTextBox.Text = sb.ToString();
         }
@@ -920,13 +842,9 @@ namespace XJAudioLatencyTester
         private void UpdateStatusSafe(string status)
         {
             if (statusLabel.InvokeRequired)
-            {
                 statusLabel.Invoke(new Action(() => statusLabel.Text = status));
-            }
             else
-            {
                 statusLabel.Text = status;
-            }
         }
 
         private void ClearResults()
@@ -938,13 +856,9 @@ namespace XJAudioLatencyTester
         private void DisplayResults(List<DeviceTestResult> results)
         {
             if (resultsTextBox.InvokeRequired)
-            {
                 resultsTextBox.Invoke(new Action(() => DisplayResultsInternal(results)));
-            }
             else
-            {
                 DisplayResultsInternal(results);
-            }
         }
 
         private void DisplayResultsInternal(List<DeviceTestResult> results)
@@ -952,14 +866,9 @@ namespace XJAudioLatencyTester
             var sb = new System.Text.StringBuilder();
             foreach (var result in results)
             {
-                if (result.Success)
-                {
-                    sb.AppendLine($"{result.DeviceName} - {result.LatencyMs:F1} ms");
-                }
-                else
-                {
-                    sb.AppendLine($"{result.DeviceName} - Error: {result.ErrorMessage}");
-                }
+                sb.AppendLine(result.Success
+                    ? $"{result.DeviceName} - {result.LatencyMs:F1} ms"
+                    : $"{result.DeviceName} - Error: {result.ErrorMessage}");
             }
             resultsTextBox.Text = sb.ToString();
         }
@@ -967,18 +876,13 @@ namespace XJAudioLatencyTester
         private void DisplayRelativeResults(List<DeviceTestResult> results)
         {
             if (relativeResultsTextBox.InvokeRequired)
-            {
                 relativeResultsTextBox.Invoke(new Action(() => DisplayRelativeResultsInternal(results)));
-            }
             else
-            {
                 DisplayRelativeResultsInternal(results);
-            }
         }
 
         private void DisplayRelativeResultsInternal(List<DeviceTestResult> results)
         {
-            // Only consider successful results for relative calculation
             var successfulResults = results.Where(r => r.Success).ToList();
             if (successfulResults.Count < 2)
             {
@@ -986,17 +890,14 @@ namespace XJAudioLatencyTester
                 return;
             }
 
-            // Sort by latency descending
+            // Sort slowest-first; relative value = delay to add in Voicemeeter to sync the device
             var sortedResults = successfulResults.OrderByDescending(r => r.LatencyMs).ToList();
-            var maxLatency = sortedResults[0].LatencyMs;
+            double maxLatency = sortedResults[0].LatencyMs;
 
             var sb = new System.Text.StringBuilder();
-            for (int i = 0; i < sortedResults.Count; i++)
-            {
-                var result = sortedResults[i];
-                var relativeLatency = maxLatency - result.LatencyMs;
-                sb.AppendLine($"{result.DeviceName} - {relativeLatency:F1} ms");
-            }
+            foreach (var result in sortedResults)
+                sb.AppendLine($"{result.DeviceName} - {maxLatency - result.LatencyMs:F1} ms");
+
             relativeResultsTextBox.Text = sb.ToString();
         }
 
@@ -1011,7 +912,6 @@ namespace XJAudioLatencyTester
         }
     }
 
-    // Supporting classes
     public class DeviceTestInfo
     {
         public int DeviceId { get; set; }
