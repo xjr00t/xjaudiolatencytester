@@ -15,8 +15,9 @@ publish*/
 packages/
 packages.config
 
-# Claude Code memory (local only)
+# Claude Code — local only, not for repository
 .claude/
+CLAUDE.md
 
 # App settings saved at runtime
 AppSettings.xml
