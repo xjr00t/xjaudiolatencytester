@@ -64,9 +64,9 @@ dotnet publish XJAudioLatencyTester.csproj -c Release -o dist
 5. Uses a **coarse pass** (0.25 ms step) followed by a **fine pass** (per-sample) around the peak
 6. Reports `detected_position − expected_position` as the measured latency
 
-## Code Signing
+## Windows SmartScreen
 
-Code signing for release binaries is provided by the [SignPath Foundation](https://signpath.org).
+Release binaries are currently unsigned. Windows may show a SmartScreen warning on first run — click **More info → Run anyway**. This is expected for new open-source projects without a commercial code signing certificate.
 
 ## Dependencies
 

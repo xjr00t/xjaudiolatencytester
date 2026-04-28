@@ -6,11 +6,10 @@ on:
       - 'v*.*'
 
 permissions:
-  id-token: write   # required by SignPath OIDC authentication
-  contents: write   # required to create GitHub Releases
+  contents: write
 
 jobs:
-  build-sign-release:
+  build-release:
     runs-on: windows-latest
 
     steps:
@@ -21,30 +20,8 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Publish single EXE
-        run: dotnet publish XJAudioLatencyTester.csproj -c Release -o dist
-
-      - name: Upload unsigned artifact
-        id: upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: XJAudioLatencyTester-unsigned
-          path: dist/XJAudioLatencyTester.exe
-
-      - name: Sign with SignPath
-        uses: signpath/github-action-submit-signing-request@v1
-        with:
-          api-token:            ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id:      ${{ vars.SIGNPATH_ORG_ID }}
-          project-slug:         xjaudiolatencytester
-          signing-policy-slug:  release-signing
-          github-artifact-id:   ${{ steps.upload.outputs.artifact-id }}
-          wait-for-completion:  true
-          wait-for-completion-timeout-in-seconds: 600
-          output-artifact-directory: signed/
-
-      - name: Package release zip
         run: |
-          Copy-Item signed/XJAudioLatencyTester.exe dist/ -Force
+          dotnet publish XJAudioLatencyTester.csproj -c Release -o dist
           Compress-Archive `
             -Path dist/XJAudioLatencyTester.exe, dist/XJAudioLatencyTester.exe.config `
             -DestinationPath "XJAudioLatencyTester-${{ github.ref_name }}-win.zip"
@@ -55,4 +32,4 @@ jobs:
           name: "XJ Audio Latency Tester ${{ github.ref_name }}"
           files: |
             XJAudioLatencyTester-${{ github.ref_name }}-win.zip
-            signed/XJAudioLatencyTester.exe
+            dist/XJAudioLatencyTester.exe
